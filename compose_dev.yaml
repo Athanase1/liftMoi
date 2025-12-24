@@ -1,0 +1,65 @@
+name: liftmoi-microservices
+
+services:
+  db:
+    container_name: postgres-db
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: liftmoi_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  discovery:
+    container_name: discovery
+    build: ./discovery
+    ports:
+      - "8761:8761"
+
+  gateway:
+    container_name: gateway
+    build: ./gateway
+    ports:
+      - "8080:8080"
+      - "5010:5005"
+    depends_on:
+      - discovery
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery:8761/eureka
+
+  service-voitures:
+    container_name: service-voitures
+    build: ./service-voitures
+    ports:
+      - "8081:8080"
+      - "5005:5005"
+    depends_on:
+      - db
+      - discovery
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/liftmoi_db
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery:8761/eureka
+
+  service-auth:
+    container_name: service-auth
+    build: ./service-auth
+    ports:
+      - "8082:8080"
+      - "5006:5005"
+    depends_on:
+      - db
+      - discovery
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/liftmoi_db
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery:8761/eureka
+
+volumes:
+  pgdata:
