@@ -40,13 +40,13 @@ public class GatewayApplication {
                 .filter(jwtFilter)
                 .filter(rewritePath("/voitures/(?<segment>.*)", "/voitures/${segment}"))
 
-                .route(path("/avis/**"), http("http://service-avis:8080"))
+                .route(path("/avis/**"), http("http://service-avis:8083"))
                 .filter(jwtFilter)
                 .filter(rewritePath("/avis/(?<segment>.*)", "/avis/${segment}"))
 
-                .route(path("/location/**"), http("http://service-location:8080"))
+                .route(path("/locations/**"), http("http://service-location:8084"))
                 .filter(jwtFilter)
-                .filter(rewritePath("/location/(?<segment>.*)", "/location/${segment}"))
+                .filter(rewritePath("/locations/(?<segment>.*)", "/location/${segment}"))
 
                 .build();
     }
