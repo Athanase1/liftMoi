@@ -1,65 +1,159 @@
 name: liftmoi-microservices
 
 services:
-  db:
-    container_name: postgres-db
+  # --- BASES DE DONNÉES ---
+  db-auth:
+    container_name: postgres-auth
     image: postgres:latest
-    restart: unless-stopped
     environment:
-      POSTGRES_DB: liftmoi_db
+      POSTGRES_DB: auth_db
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
+      # Ajout ici :
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5431:5432"
+    volumes:
+      - pgdata-auth:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-voitures:
+    container_name: postgres-voitures
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: voitures_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      # Ajout ici :
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata-voitures:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d voitures_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
+  db-avis:
+    container_name: postgres-avis
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: avis_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      # Ajout ici :
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata-avis:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d avis_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-location:
+    container_name: postgres-location
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: location_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      # Ajout ici :
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata-location:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d location_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- INFRASTRUCTURE ---
   discovery:
     container_name: discovery
     build: ./discovery
     ports:
       - "8761:8761"
+    healthcheck:
+      # Cette commande vérifie si le port 8761 accepte les connexions TCP
+      test: [ "CMD-SHELL", "bash -c '< /dev/tcp/localhost/8761' || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   gateway:
     container_name: gateway
     build: ./gateway
     ports:
       - "8080:8080"
-      - "5010:5005"
     depends_on:
-      - discovery
+      discovery:
+        condition: service_healthy
     environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery:8761/eureka
+
+  # --- MICROSERVICES ---
+  service-auth:
+    container_name: service-auth
+    build: ./service-auth
+    depends_on:
+      db-auth:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-auth:5432/auth_db
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery:8761/eureka
 
   service-voitures:
     container_name: service-voitures
     build: ./service-voitures
-    ports:
-      - "8081:8080"
-      - "5005:5005"
     depends_on:
-      - db
-      - discovery
+      db-voitures:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/liftmoi_db
-      SPRING_DATASOURCE_USERNAME: user
-      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-voitures:5432/voitures_db
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery:8761/eureka
 
-  service-auth:
-    container_name: service-auth
-    build: ./service-auth
-    ports:
-      - "8082:8080"
-      - "5006:5005"
+  service-avis:
+    container_name: service-avis
+    build: ./service-avis
     depends_on:
-      - db
-      - discovery
+      db-avis:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/liftmoi_db
-      SPRING_DATASOURCE_USERNAME: user
-      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-avis:5432/avis_db
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery:8761/eureka
+
+  service-location:
+    container_name: service-location
+    build: ./service-location
+    depends_on:
+      db-location:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-location:5432/location_db
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery:8761/eureka
 
 volumes:
-  pgdata:
+  pgdata-auth:
+  pgdata-voitures:
+  pgdata-avis:
+  pgdata-location:
