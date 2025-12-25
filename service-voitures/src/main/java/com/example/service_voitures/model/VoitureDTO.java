@@ -9,7 +9,7 @@ import java.util.Date;
 @AllArgsConstructor
 public class VoitureDTO {
     private String marque;
-    private Date annee;
+    private String annee;
     private String model;
     private String couleur;
     private Long kilometre;

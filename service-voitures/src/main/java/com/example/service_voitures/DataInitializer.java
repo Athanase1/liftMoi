@@ -57,7 +57,7 @@ public class DataInitializer implements CommandLineRunner {
         Voiture v = new Voiture();
         v.setMarque(marque);
         v.setModel(modele);
-        v.setAnnee(new Date());
+        v.setAnnee("2022");
         v.setCouleur(couleur);
         v.setKilometre(km);
         v.setMatricule(matricule);
